@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HustleHub KE - Kazi za Everykind</title>
+  <meta name="theme-color" content="#1EBE5B">
+  <link rel="manifest" href="data:application/manifest+json,{"name":"HustleHub KE","short_name":"HustleHub","start_url":".","display":"standalone","background_color":"#0D1B2A","theme_color":"#1EBE5B","icons":[{"src":"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%231EBE5B'/><text x='50' y='65' font-size='60' text-anchor='middle' fill='white'>H</text></svg>","sizes":"192x192","type":"image/svg+xml"}]}">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root {
+      --green: #1EBE5B;
+      --navy: #0D1B2A;
+      --yellow: #FFC727;
+      --bg: #F8FAFC;
+      --card: #FFFFFF;
+      --text: #1E293B;
+      --muted: #64748B;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg); color: var(--text); line-height: 1.5;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 16px; }
+    .btn { 
+      background: var(--green); color: white; border: none; padding: 12px 24px; 
+      border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s;
+    }
+    .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-outline { background: transparent; border: 2px solid var(--green); color: var(--green); }
+    .card { 
+      background: var(--card); border-radius: 12px; padding: 20px; 
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 16px;
+    }
+    .badge { 
+      display: inline-block; padding: 4px 12px; border-radius: 20px; 
+      font-size: 12px; font-weight: 600; background: var(--green); color: white;
+    }
+    .badge-yellow { background: var(--yellow); color: var(--navy); }
+    .badge-navy { background: var(--navy); }
+    nav { 
+      background: var(--card); border-bottom: 1px solid #E2E8F0; 
+      position: sticky; top: 0; z-index: 100;
+    }
+    .nav-inner { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; }
+    .logo { font-size: 24px; font-weight: 800; color: var(--navy); }
+    .logo span { color: var(--green); }
+    .bottom-nav { 
+      position: fixed; bottom: 0; left: 0; right: 0; background: var(--card);
+      display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid #E2E8F0;
+      z-index: 100; display: none;
+    }
+    .bottom-nav-item { text-align: center; font-size: 12px; color: var(--muted); cursor: pointer; }
+    .bottom-nav-item.active { color: var(--green); font-weight: 600; }
+    .filter-bar { display: flex; gap: 8px; overflow-x: auto; padding: 16px 0; }
+    .filter-chip { 
+      padding: 8px 16px; border: 1px solid #CBD5E1; border-radius: 20px; 
+      white-space: nowrap; cursor: pointer; background: white;
+    }
+    .filter-chip.active { background: var(--green); color: white; border-color: var(--green); }
+    .job-grid { display: grid; gap: 16px; margin: 24px 0; }
+    #map { height: 500px; border-radius: 12px; margin: 16px 0; }
+    .modal { 
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+      background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;
+    }
+    .modal.active { display: flex; }
+    .modal-content { 
+      background: white; border-radius: 16px; padding: 24px; max-width: 500px; 
+      width: 90%; max-height: 90vh; overflow-y: auto;
+    }
+    .hustle-score { 
+      width: 120px; height: 120px; border-radius: 50%; 
+      background: conic-gradient(var(--green) 0deg, var(--green) 270deg, #E2E8F0 270deg);
+      display: flex; align-items: center; justify-content: center; margin: 0 auto;
+    }
+    .hustle-score-inner { 
+      width: 100px; height: 100px; background: white; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 800;
+    }
+    @media (max-width: 768px) {
+      .bottom-nav { display: flex; }
+      .desktop-only { display: none; }
+      body { padding-bottom: 70px; }
+      .job-grid { grid-template-columns: 1fr; }
+    }
+    @media (min-width: 769px) {
+      .job-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="container">
+      <div class="nav-inner">
+        <div class="logo">Hustle<span>Hub</span> KE</div>
+        <div class="desktop-only">
+          <button class="btn btn-outline" onclick="showPage('jobs')">Kazi</button>
+          <button class="btn" onclick="showPage('post')">Weka Kazi</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div id="app" class="container"></div>
+
+  <div class="bottom-nav">
+    <div class="bottom-nav-item active" onclick="showPage('home')">
+      <div>🏠</div><div>Home</div>
+    </div>
+    <div class="bottom-nav-item" onclick="showPage('jobs')">
+      <div>💼</div><div>Kazi</div>
+    </div>
+    <div class="bottom-nav-item" onclick="showPage('post')">
+      <div>➕</div><div>Weka</div>
+    </div>
+    <div class="bottom-nav-item" onclick="showPage('profile')">
+      <div>👤</div><div>Profile</div>
+    </div>
+  </div>
+
+  <div id="stkModal" class="modal">
+    <div class="modal-content">
+      <h3>Lipa na M-Pesa</h3>
+      <p style="color: var(--muted); margin: 12px 0;">Enter your phone number to receive STK push</p>
+      <input type="tel" placeholder="0712 345 678" style="width: 100%; padding: 12px; border: 1px solid #CBD5E1; border-radius: 8px; margin: 12px 0;">
+      <button class="btn" style="width: 100%;" onclick="simulateStk()">Confirm Payment</button>
+      <p style="font-size: 12px; color: var(--muted); margin-top: 12px; text-align: center;">Demo mode - no real payment</p>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script>
+    const jobs = [
+      { id: 1, title: "Sales Agent", company: "Little App Kenya", pay: "1,500/day", location: "CBD", type: "gig", escrow: true, lat: -1.2864, lng: 36.8172, posted: "2h ago" },
+      { id: 2, title: "Receptionist", company: "Brites Management", pay: "30-45k/mo", location: "Westlands", type: "career", escrow: false, lat: -1.2676, lng: 36.8108, posted: "5h ago" },
+      { id: 3, title: "Cyber Security Instructor", company: "StarQode Tech Hub", pay: "30-45k/mo", location: "CBD", type: "career", escrow: false, lat: -1.2921, lng: 36.8219, posted: "1d ago" },
+      { id: 4, title: "Electrical Technician", company: "PowerTech Ltd", pay: "2,000/day", location: "Industrial Area", type: "gig", escrow: true, lat: -1.3197, lng: 36.8444, posted: "3h ago" },
+    ];
+
+    let currentPage = 'home';
+    let hustleScore = parseInt(localStorage.getItem('hustleScore') || '65');
+
+    function showPage(page) {
+      currentPage = page;
+      document.querySelectorAll('.bottom-nav-item').forEach(el => el.classList.remove('active'));
+      render();
+    }
+
+    function render() {
+      const app = document.getElementById('app');
+      if (currentPage === 'home') app.innerHTML = renderHome();
+      else if (currentPage === 'jobs') app.innerHTML = renderJobs();
+      else if (currentPage === 'post') app.innerHTML = renderPost();
+      else if (currentPage === 'profile') app.innerHTML = renderProfile();
+      else if (currentPage === 'admin') app.innerHTML = renderAdmin();
+      if (currentPage === 'jobs' && document.getElementById('map')) initMap();
+    }
+
+    function renderHome() {
+      return `
+        <div style="padding: 40px 0; text-align: center;">
+          <h1 style="font-size: 48px; margin-bottom: 16px;">Kazi za <span style="color: var(--green);">Everykind</span></h1>
+          <p style="font-size: 20px; color: var(--muted); margin-bottom: 32px;">From kibarua ya jioni to career jobs. All verified, M-Pesa ready.</p>
+          <button class="btn" onclick="showPage('jobs')">Tafuta Kazi</button>
+          <button class="btn btn-outline" onclick="showPage('post')" style="margin-left: 12px;">Weka Kazi</button>
+          <div style="margin-top: 40px;">
+            <p style="color: var(--muted);">No smartphone? <a href="#" style="color: var(--green);">Pata kazi via SMS</a></p>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Ina-work aje?</h2>
+          <div style="display: grid; gap: 16px; margin-top: 16px;">
+            <div>1. <strong>Tafuta</strong> — Filter by location, pay, no CV needed</div>
+            <div>2. <strong>Apply</strong> — Niko In via WhatsApp, instant</div>
+            <div>3. <strong>Pata Doh</strong> — M-Pesa daily or monthly, secured</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderJobs() {
+      return `
+        <div class="filter-bar">
+          <div class="filter-chip active">All</div>
+          <div class="filter-chip">Daily Pay</div>
+          <div class="filter-chip">No CV</div>
+          <div class="filter-chip">CBD</div>
+          <div class="filter-chip">Westlands</div>
+        </div>
+        <div style="display: flex; gap: 12px; margin: 16px 0;">
+          <button class="btn btn-outline" style="flex: 1;">List</button>
+          <button class="btn" style="flex: 1;" onclick="toggleMap()">Map</button>
+          <button class="btn btn-outline">📍 Near Me</button>
+        </div>
+        <div id="map"></div>
+        <div class="job-grid">
+          ${jobs.map(job => `
+            <div class="card">
+              <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                <div>
+                  <h3>${job.title}</h3>
+                  <p style="color: var(--muted);">${job.company} • ${job.location}</p>
+                </div>
+                ${job.escrow ? '<span class="badge badge-yellow">Pesa Secured 💰</span>' : '<span class="badge">Verified</span>'}
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <div style="font-size: 24px; font-weight: 700; color: var(--green);">${job.pay}</div>
+                  <div style="font-size: 12px; color: var(--muted);">Posted ${job.posted}</div>
+                </div>
+                <a href="https://wa.me/254700000000?text=Niaje, I'm interested in ${job.title} at ${job.company}" target="_blank" class="btn">Niko In</a>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function renderPost() {
+      return `
+        <div style="padding: 24px 0;">
+          <h2>Weka Kazi</h2>
+          <div class="card" style="margin-top: 16px;">
+            <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+              <button class="btn" style="flex: 1;">Quick Gig</button>
+              <button class="btn btn-outline" style="flex: 1;">Career Job</button>
+            </div>
+            <input type="text" placeholder="Job Title" style="width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #CBD5E1; border-radius: 8px;">
+            <input type="text" placeholder="Location" style="width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #CBD5E1; border-radius: 8px;">
+            <div style="display: flex; gap: 8px;">
+              <input type="number" placeholder="Pay" style="flex: 1; padding: 12px; margin: 8px 0; border: 1px solid #CBD5E1; border-radius: 8px;">
+              <select style="flex: 1; padding: 12px; margin: 8px 0; border: 1px solid #CBD5E1; border-radius: 8px;">
+                <option>Per Day</option><option>Per Week</option><option>Per Month</option>
+              </select>
+            </div>
+            <label style="display: flex; align-items: center; gap: 8px; margin: 16px 0;">
+              <input type="checkbox"> Use HustleHub Escrow - Protect both sides
+            </label>
+            <button class="btn" style="width: 100%;">Post Job Free</button>
+          </div>
+          <div class="card">
+            <h3>Boost Kazi</h3>
+            <p style="color: var(--muted); margin: 8px 0;">Pata applicants 5x faster</p>
+            <div style="display: flex; gap: 12px;">
+              <button class="btn btn-outline" style="flex: 1;" onclick="showStk()">KES 299<br><small>3 Days</small></button>
+              <button class="btn" style="flex: 1;" onclick="showStk()">KES 999<br><small>Verified Badge</small></button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderProfile() {
+      return `
+        <div style="padding: 24px 0;">
+          <div class="card" style="text-align: center;">
+            <div class="hustle-score">
+              <div class="hustle-score-inner">${hustleScore}</div>
+            </div>
+            <h3 style="margin-top: 16px;">My Hustle Score</h3>
+            <p style="color: var(--muted);">+20 Verified ID • +${Math.floor(hustleScore/10)} Gigs Done • +15 Ratings</p>
+          </div>
+          <div class="card">
+            <h3>Jitengenezee CV na AI</h3>
+            <p style="color: var(--muted); margin: 8px 0;">Elezea hustle yako in simple words</p>
+            <textarea placeholder="Mfano: Nimeuza nguo Gikomba 2 years..." style="width: 100%; padding: 12px; border: 1px solid #CBD5E1; border-radius: 8px; min-height: 100px;"></textarea>
+            <button class="btn" style="width: 100%; margin-top: 12px;">Tengeneza CV</button>
+          </div>
+          <div class="card">
+            <h3>My Applications</h3>
+            <div style="margin-top: 12px;">
+              <div style="padding: 12px; border-bottom: 1px solid #E2E8F0;">
+                <strong>Sales Agent</strong> • Little App<br>
+                <span class="badge">Applied</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderAdmin() {
+      return `
+        <div style="padding: 24px 0;">
+          <h2>Admin Dashboard</h2>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 16px 0;">
+            <div class="card"><h3>248</h3><p style="color: var(--muted);">Total Jobs</p></div>
+            <div class="card"><h3>89</h3><p style="color: var(--muted);">Verified Employers</p></div>
+            <div class="card"><h3>KES 45K</h3><p style="color: var(--muted);">In Escrow</p></div>
+          </div>
+          <div class="card">
+            <h3>Quick Links</h3>
+            <button class="btn btn-outline" style="margin: 8px 4px;">Generate Investor Deck</button>
+            <button class="btn btn-outline" style="margin: 8px 4px;">Sales Kit</button>
+            <button class="btn btn-outline" style="margin: 8px 4px;">Compliance Doc</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function initMap() {
+      if (window.mapInstance) return;
+      window.mapInstance = L.map('map').setView([-1.2864, 36.8172], 12);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(window.mapInstance);
+      jobs.forEach(job => {
+        L.marker([job.lat, job.lng])
+          .addTo(window.mapInstance)
+          .bindPopup(`<strong>${job.title}</strong><br>${job.company}<br>${job.pay}<br><a href='https://wa.me/254700000000' target='_blank'>Niko In</a>`);
+      });
+    }
+
+    function showStk() { document.getElementById('stkModal').classList.add('active'); }
+    function simulateStk() { 
+      alert('Payment successful! Job boosted.'); 
+      document.getElementById('stkModal').classList.remove('active');
+    }
+    function toggleMap() { alert('Map view - see markers for all jobs'); }
+
+    // PWA Install
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      setTimeout(() => {
+        if (confirm('Add HustleHub to Home Screen?')) deferredPrompt.prompt();
+      }, 3000);
+    });
+
+    // Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('data:text/javascript,self.addEventListener("fetch",()=>{})');
+    }
+
+    render();
+  </script>
+</body>
+                                    </html>
